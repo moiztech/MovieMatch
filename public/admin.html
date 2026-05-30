@@ -17,11 +17,53 @@
   </nav>
 
   <header class="hero">
-    <h1>Analytics Dashboard</h1>
-    <p>Database analytics using JOINs, GROUP BY, and aggregate functions (AVG, COUNT, MAX).</p>
+    <h1>Admin Dashboard</h1>
+    <p>Manage movies and view database analytics for your presentation.</p>
   </header>
 
   <main>
+
+    <section class="admin-panel">
+      <h2>Add New Movie</h2>
+      <p class="subtitle">Inserts into <code>movies</code>, <code>directors</code>, <code>movie_genres</code>, and <code>movie_actors</code> — see <code>addMovie()</code> in queries.js</p>
+      <form class="admin-form" id="addMovieForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="title">Movie Title *</label>
+            <input type="text" id="title" required placeholder="e.g. The Matrix">
+          </div>
+          <div class="form-group">
+            <label for="releaseYear">Release Year *</label>
+            <input type="number" id="releaseYear" required min="1900" max="2030" placeholder="1999">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="directorName">Director *</label>
+          <input type="text" id="directorName" list="directorList" required placeholder="Christopher Nolan">
+          <datalist id="directorList"></datalist>
+        </div>
+        <div class="form-group">
+          <label for="posterUrl">Poster URL</label>
+          <input type="url" id="posterUrl" placeholder="https://image.tmdb.org/...">
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" rows="3" placeholder="Short storyline..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Genres * (select at least one)</label>
+          <div class="genre-checkboxes" id="genreCheckboxes"></div>
+        </div>
+        <div class="form-group">
+          <label for="cast">Cast (comma-separated)</label>
+          <input type="text" id="cast" placeholder="Actor One, Actor Two">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">Add Movie</button>
+          <span class="form-msg hidden" id="formMsg"></span>
+        </div>
+      </form>
+    </section>
 
     <section class="section">
       <h2>Overview</h2>
@@ -60,6 +102,51 @@
   <script src="js/main.js"></script>
   <script>
     setActiveNav('admin');
+
+    async function loadFormOptions() {
+      const [genres, directors] = await Promise.all([
+        fetchJSON('/api/genres'),
+        fetchJSON('/api/admin/directors'),
+      ]);
+      document.getElementById('genreCheckboxes').innerHTML = genres.map((g) => `
+        <label><input type="checkbox" name="genre" value="${g.name}"> ${g.name}</label>
+      `).join('');
+      document.getElementById('directorList').innerHTML = directors
+        .map((d) => `<option value="${d.name}">`).join('');
+    }
+
+    document.getElementById('addMovieForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('formMsg');
+      msg.classList.remove('hidden', 'error');
+
+      const genres = [...document.querySelectorAll('input[name="genre"]:checked')].map((c) => c.value);
+      if (!genres.length) {
+        msg.textContent = 'Please select at least one genre.';
+        msg.classList.add('error');
+        return;
+      }
+
+      try {
+        const res = await postJSON('/api/admin/movies', {
+          title: document.getElementById('title').value.trim(),
+          releaseYear: document.getElementById('releaseYear').value,
+          directorName: document.getElementById('directorName').value.trim(),
+          posterUrl: document.getElementById('posterUrl').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          genres,
+          cast: document.getElementById('cast').value,
+        });
+        msg.textContent = 'Movie added! ID: ' + res.movieId + ' — visible on Home page.';
+        msg.classList.remove('error');
+        e.target.reset();
+        loadAnalytics();
+        loadFormOptions();
+      } catch (err) {
+        msg.textContent = 'Failed to add movie. Is the server running?';
+        msg.classList.add('error');
+      }
+    });
 
     async function loadAnalytics() {
       const data = await fetchJSON('/api/admin/analytics');
@@ -100,6 +187,7 @@
         <tr><td>${g.genre}</td><td>${g.avg_rating}</td><td>${g.movie_count}</td></tr>`).join('');
     }
 
+    loadFormOptions();
     loadAnalytics().catch(() => {
       document.getElementById('summaryGrid').innerHTML =
         '<p class="empty">Run npm run setup-db then npm start</p>';

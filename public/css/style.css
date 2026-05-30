@@ -428,6 +428,78 @@ th { color: var(--text-muted); font-weight: 500; font-size: 0.85rem; }
 
 .hidden { display: none !important; }
 
+/* ADMIN ADD MOVIE FORM */
+.admin-panel {
+  max-width: 720px;
+  margin: 0 auto 3rem;
+  padding: 2rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(229, 9, 20, 0.25);
+  box-shadow: var(--shadow);
+}
+
+.admin-panel h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
+}
+
+.admin-panel .subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .admin-form .form-row { grid-template-columns: 1fr; }
+}
+
+.admin-form .form-group input,
+.admin-form .form-group textarea,
+.admin-form .form-group select {
+  max-width: 100%;
+}
+
+.genre-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.genre-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.genre-checkboxes input { width: auto; accent-color: var(--accent); }
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.form-msg {
+  font-size: 0.9rem;
+  color: var(--gold);
+}
+
+.form-msg.error { color: var(--accent); }
+
 footer {
   text-align: center;
   padding: 2rem;

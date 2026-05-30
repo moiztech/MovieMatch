@@ -385,7 +385,87 @@ async function getDashboardSummary() {
 }
 
 // -----------------------------------------------------------------------------
-// 25. ALL MOVIES – browse page
+// 25. ADMIN – Get all directors (for add-movie form)
+// -----------------------------------------------------------------------------
+async function getAllDirectors() {
+  const sql = `SELECT director_id, name FROM directors ORDER BY name`;
+  const [rows] = await pool.query(sql);
+  return rows;
+}
+
+// -----------------------------------------------------------------------------
+// 26. ADMIN – Find director by name, or INSERT new director
+// -----------------------------------------------------------------------------
+async function findOrCreateDirector(name) {
+  const selectSql = `SELECT director_id FROM directors WHERE name = ?`;
+  const [rows] = await pool.query(selectSql, [name]);
+  if (rows.length) return rows[0].director_id;
+  const insertSql = `INSERT INTO directors (name) VALUES (?)`;
+  const [result] = await pool.query(insertSql, [name]);
+  return result.insertId;
+}
+
+// -----------------------------------------------------------------------------
+// 27. ADMIN – Find actor by name, or INSERT new actor
+// -----------------------------------------------------------------------------
+async function findOrCreateActor(name) {
+  const selectSql = `SELECT actor_id FROM actors WHERE name = ?`;
+  const [rows] = await pool.query(selectSql, [name]);
+  if (rows.length) return rows[0].actor_id;
+  const insertSql = `INSERT INTO actors (name) VALUES (?)`;
+  const [result] = await pool.query(insertSql, [name]);
+  return result.insertId;
+}
+
+// -----------------------------------------------------------------------------
+// 28. ADMIN – Get genre_id by name (for linking movie to genre)
+// -----------------------------------------------------------------------------
+async function getGenreIdByName(name) {
+  const sql = `SELECT genre_id FROM genres WHERE name = ?`;
+  const [rows] = await pool.query(sql, [name]);
+  return rows[0] ? rows[0].genre_id : null;
+}
+
+// -----------------------------------------------------------------------------
+// 29. ADMIN – Add new movie (INSERT + junction table INSERTs)
+// -----------------------------------------------------------------------------
+async function addMovie(data) {
+  const { title, releaseYear, posterUrl, description, directorName, genres, cast } = data;
+
+  const directorId = await findOrCreateDirector(directorName);
+
+  const insertMovieSql = `
+    INSERT INTO movies (title, release_year, poster_url, description, director_id)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+  const [result] = await pool.query(insertMovieSql, [
+    title,
+    releaseYear,
+    posterUrl || null,
+    description || null,
+    directorId,
+  ]);
+  const movieId = result.insertId;
+
+  const linkGenreSql = `INSERT INTO movie_genres (movie_id, genre_id) VALUES (?, ?)`;
+  for (const genreName of genres) {
+    const genreId = await getGenreIdByName(genreName);
+    if (genreId) await pool.query(linkGenreSql, [movieId, genreId]);
+  }
+
+  const linkActorSql = `INSERT INTO movie_actors (movie_id, actor_id) VALUES (?, ?)`;
+  for (const actorName of cast) {
+    const trimmed = actorName.trim();
+    if (!trimmed) continue;
+    const actorId = await findOrCreateActor(trimmed);
+    await pool.query(linkActorSql, [movieId, actorId]);
+  }
+
+  return movieId;
+}
+
+// -----------------------------------------------------------------------------
+// 30. ALL MOVIES – browse page
 // -----------------------------------------------------------------------------
 async function getAllMovies() {
   const sql = `
@@ -427,4 +507,6 @@ module.exports = {
   getAvgRatingByGenre,
   getDashboardSummary,
   getAllMovies,
+  getAllDirectors,
+  addMovie,
 };

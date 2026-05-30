@@ -140,7 +140,42 @@ app.get('/api/battle/leaderboard', async (req, res) => {
   }
 });
 
-// --- ADMIN ANALYTICS ---
+// --- ADMIN ---
+app.get('/api/admin/directors', async (req, res) => {
+  try {
+    res.json(await q.getAllDirectors());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/movies', async (req, res) => {
+  try {
+    const { title, releaseYear, posterUrl, description, directorName, genres, cast } = req.body;
+    if (!title || !releaseYear || !directorName) {
+      return res.status(400).json({ error: 'Title, release year, and director are required' });
+    }
+    if (!genres || !genres.length) {
+      return res.status(400).json({ error: 'Select at least one genre' });
+    }
+    const castList = typeof cast === 'string'
+      ? cast.split(',').map((s) => s.trim()).filter(Boolean)
+      : (cast || []);
+    const movieId = await q.addMovie({
+      title,
+      releaseYear: Number(releaseYear),
+      posterUrl,
+      description,
+      directorName,
+      genres,
+      cast: castList,
+    });
+    res.json({ success: true, movieId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/admin/analytics', async (req, res) => {
   try {
     const [summary, popularGenre, highestRated, mostReviewed, topActors, avgByGenre] =
