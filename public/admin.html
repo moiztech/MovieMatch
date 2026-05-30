@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Dashboard – MovieMatch</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">MOVIEMATCH</a>
+    <div class="nav-links">
+      <a href="index.html" data-page="home">Home</a>
+      <a href="battle.html" data-page="battle">Movie Battle</a>
+      <a href="admin.html" data-page="admin" class="active">Analytics</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <h1>Analytics Dashboard</h1>
+    <p>Database analytics using JOINs, GROUP BY, and aggregate functions (AVG, COUNT, MAX).</p>
+  </header>
+
+  <main>
+
+    <section class="section">
+      <h2>Overview</h2>
+      <div class="admin-grid" id="summaryGrid"><p class="loading">Loading...</p></div>
+    </section>
+
+    <section class="section">
+      <h2>Key Insights</h2>
+      <div class="admin-grid" id="insightsGrid"></div>
+    </section>
+
+    <section class="section">
+      <h2>Top Actors <small style="color:var(--text-muted);font-weight:400">(GROUP BY + COUNT)</small></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Actor</th><th>Movies</th></tr></thead>
+          <tbody id="actorsTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Average Rating by Genre <small style="color:var(--text-muted);font-weight:400">(AVG + JOIN)</small></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Genre</th><th>Avg Rating</th><th>Movie Count</th></tr></thead>
+          <tbody id="genreTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+
+  </main>
+
+  <footer>MovieMatch – University Database Project</footer>
+  <script src="js/main.js"></script>
+  <script>
+    setActiveNav('admin');
+
+    async function loadAnalytics() {
+      const data = await fetchJSON('/api/admin/analytics');
+      const s = data.summary;
+
+      document.getElementById('summaryGrid').innerHTML = `
+        <div class="stat-card"><div class="label">Total Movies</div><div class="value">${s.total_movies}</div></div>
+        <div class="stat-card"><div class="label">Total Reviews</div><div class="value">${s.total_reviews}</div></div>
+        <div class="stat-card"><div class="label">Total Ratings</div><div class="value">${s.total_ratings}</div></div>
+        <div class="stat-card"><div class="label">Battle Votes</div><div class="value">${s.total_battle_votes}</div></div>
+        <div class="stat-card"><div class="label">Overall Avg Rating</div><div class="value">${s.overall_avg_rating}</div></div>`;
+
+      const pg = data.popularGenre;
+      const hr = data.highestRated;
+      const mr = data.mostReviewed;
+
+      document.getElementById('insightsGrid').innerHTML = `
+        <div class="stat-card">
+          <div class="label">Most Popular Genre</div>
+          <div class="value" style="font-size:1.5rem">${pg ? pg.genre : '—'}</div>
+          <small style="color:var(--text-muted)">${pg ? pg.movie_count + ' movies' : ''}</small>
+        </div>
+        <div class="stat-card">
+          <div class="label">Highest Rated Movie</div>
+          <div class="value" style="font-size:1.5rem">${hr ? hr.title : '—'}</div>
+          <small class="rating-badge">${hr ? hr.avg_rating : ''}</small>
+        </div>
+        <div class="stat-card">
+          <div class="label">Most Reviewed Movie</div>
+          <div class="value" style="font-size:1.5rem">${mr ? mr.title : '—'}</div>
+          <small style="color:var(--text-muted)">${mr ? mr.review_count + ' reviews' : ''}</small>
+        </div>`;
+
+      document.getElementById('actorsTable').innerHTML = data.topActors.map((a) => `
+        <tr><td>${a.actor}</td><td>${a.movie_count}</td></tr>`).join('');
+
+      document.getElementById('genreTable').innerHTML = data.avgByGenre.map((g) => `
+        <tr><td>${g.genre}</td><td>${g.avg_rating}</td><td>${g.movie_count}</td></tr>`).join('');
+    }
+
+    loadAnalytics().catch(() => {
+      document.getElementById('summaryGrid').innerHTML =
+        '<p class="empty">Run npm run setup-db then npm start</p>';
+    });
+  </script>
+</body>
+</html>

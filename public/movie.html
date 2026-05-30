@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Details – MovieMatch</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">MOVIEMATCH</a>
+    <div class="nav-links">
+      <a href="index.html" data-page="home">Home</a>
+      <a href="battle.html" data-page="battle">Movie Battle</a>
+      <a href="admin.html" data-page="admin">Analytics</a>
+    </div>
+  </nav>
+
+  <div id="content"><p class="loading" style="padding:3rem;text-align:center">Loading movie...</p></div>
+
+  <main class="section hidden" id="similarSection">
+    <div class="section-header"><h2>You May Also Like</h2></div>
+    <div class="movie-grid" id="similarGrid"></div>
+  </main>
+
+  <footer>MovieMatch – University Database Project</footer>
+  <script src="js/main.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const movieId = params.get('id');
+    let selectedStars = 0;
+
+    async function loadMovie() {
+      if (!movieId) {
+        document.getElementById('content').innerHTML = '<p class="empty">No movie selected.</p>';
+        return;
+      }
+      const m = await fetchJSON('/api/movies/' + movieId);
+      const poster = m.poster_url || 'https://via.placeholder.com/300x450?text=Movie';
+      const cast = (m.cast || []).join(', ') || 'N/A';
+      const genres = (m.genres || []).map((g) => `<span class="tag">${g}</span>`).join('');
+
+      document.getElementById('content').innerHTML = `
+        <div class="detail-layout">
+          <img class="detail-poster" src="${poster}" alt="${m.title}" onerror="this.src='https://via.placeholder.com/300x450'">
+          <div class="detail-content">
+            <h1>${m.title}</h1>
+            <div class="detail-meta">
+              <span>${m.release_year}</span>
+              <span class="rating-badge">${Number(m.avg_rating).toFixed(1)}</span>
+              <span>${m.view_count} views</span>
+              <span>${m.review_count} reviews</span>
+            </div>
+            <p><strong>Director:</strong> ${m.director || 'Unknown'}</p>
+            <p><strong>Cast:</strong> ${cast}</p>
+            <div class="tags">${genres}</div>
+            <p style="margin-top:1rem;line-height:1.7">${m.description || ''}</p>
+
+            <h3 style="margin-top:2rem;font-family:'Bebas Neue';letter-spacing:1px">Rate This Movie</h3>
+            <div class="stars-input" id="starsInput"></div>
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="rateName" placeholder="Enter your name">
+            </div>
+            <button class="btn" id="submitRating">Submit Rating</button>
+
+            <h3 style="margin-top:2rem;font-family:'Bebas Neue';letter-spacing:1px">Write a Review</h3>
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="reviewName" placeholder="Enter your name">
+            </div>
+            <div class="form-group">
+              <label>Comment</label>
+              <textarea id="reviewComment" rows="3" placeholder="Share your thoughts..."></textarea>
+            </div>
+            <button class="btn" id="submitReview">Post Review</button>
+
+            <div class="review-list">
+              <h3 style="font-family:'Bebas Neue';letter-spacing:1px;margin-bottom:1rem">User Reviews</h3>
+              <div id="reviewsList"></div>
+            </div>
+          </div>
+        </div>`;
+
+      const starsEl = document.getElementById('starsInput');
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = '★';
+        btn.type = 'button';
+        btn.addEventListener('click', () => {
+          selectedStars = i;
+          starsEl.querySelectorAll('button').forEach((b, idx) => {
+            b.classList.toggle('selected', idx < i);
+          });
+        });
+        starsEl.appendChild(btn);
+      }
+
+      renderReviews(m.reviews || []);
+
+      document.getElementById('submitRating').addEventListener('click', async () => {
+        const name = document.getElementById('rateName').value.trim();
+        if (!name || !selectedStars) return alert('Enter name and select stars (1-5)');
+        const res = await postJSON('/api/movies/' + movieId + '/ratings', {
+          userName: name, stars: selectedStars,
+        });
+        alert('Rating saved! New average: ' + res.avgRating);
+        loadMovie();
+      });
+
+      document.getElementById('submitReview').addEventListener('click', async () => {
+        const name = document.getElementById('reviewName').value.trim();
+        const comment = document.getElementById('reviewComment').value.trim();
+        if (!name || !comment) return alert('Enter name and comment');
+        await postJSON('/api/movies/' + movieId + '/reviews', { userName: name, comment });
+        document.getElementById('reviewComment').value = '';
+        loadMovie();
+      });
+
+      if (m.similar && m.similar.length) {
+        document.getElementById('similarSection').classList.remove('hidden');
+        renderGrid(document.getElementById('similarGrid'), m.similar);
+      }
+    }
+
+    function renderReviews(reviews) {
+      const el = document.getElementById('reviewsList');
+      if (!reviews.length) {
+        el.innerHTML = '<p class="empty">No reviews yet. Be the first!</p>';
+        return;
+      }
+      el.innerHTML = reviews.map((r) => `
+        <div class="review-item">
+          <strong>${r.user_name}</strong>
+          <p>${r.comment}</p>
+          <small>${new Date(r.created_at).toLocaleString()}</small>
+        </div>`).join('');
+    }
+
+    loadMovie().catch(() => {
+      document.getElementById('content').innerHTML = '<p class="empty">Failed to load movie.</p>';
+    });
+  </script>
+</body>
+</html>

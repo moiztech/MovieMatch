@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Battle – MovieMatch</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">MOVIEMATCH</a>
+    <div class="nav-links">
+      <a href="index.html" data-page="home">Home</a>
+      <a href="battle.html" data-page="battle" class="active">Movie Battle</a>
+      <a href="admin.html" data-page="admin">Analytics</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <h1>Movie Battle</h1>
+    <p>Which movie is better? Click your favorite — votes update the leaderboard!</p>
+  </header>
+
+  <div class="battle-arena" id="battleArena">
+    <p class="loading">Loading battle...</p>
+  </div>
+
+  <main class="section">
+    <div class="section-header"><h2>🏆 Most Loved – Leaderboard</h2></div>
+    <ol class="leaderboard" id="leaderboard"></ol>
+  </main>
+
+  <footer>MovieMatch – University Database Project</footer>
+  <script src="js/main.js"></script>
+  <script>
+    setActiveNav('battle');
+    let currentPair = [];
+
+    async function loadPair() {
+      currentPair = await fetchJSON('/api/battle/pair');
+      const arena = document.getElementById('battleArena');
+      if (currentPair.length < 2) {
+        arena.innerHTML = '<p class="empty">Need at least 2 movies in database.</p>';
+        return;
+      }
+      const [a, b] = currentPair;
+      const img = (url) => url || 'https://via.placeholder.com/200x300';
+      arena.innerHTML = `
+        <div class="battle-card" data-id="${a.movie_id}" data-other="${b.movie_id}">
+          <img src="${img(a.poster_url)}" alt="${a.title}">
+          <h3>${a.title}</h3>
+          <span class="rating-badge">${Number(a.avg_rating).toFixed(1)}</span>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="battle-card" data-id="${b.movie_id}" data-other="${a.movie_id}">
+          <img src="${img(b.poster_url)}" alt="${b.title}">
+          <h3>${b.title}</h3>
+          <span class="rating-badge">${Number(b.avg_rating).toFixed(1)}</span>
+        </div>`;
+
+      arena.querySelectorAll('.battle-card').forEach((card) => {
+        card.addEventListener('click', async () => {
+          await postJSON('/api/battle/vote', {
+            winnerId: Number(card.dataset.id),
+            loserId: Number(card.dataset.other),
+          });
+          loadLeaderboard();
+          loadPair();
+        });
+      });
+    }
+
+    async function loadLeaderboard() {
+      const list = await fetchJSON('/api/battle/leaderboard');
+      const el = document.getElementById('leaderboard');
+      if (!list.length) {
+        el.innerHTML = '<li class="empty">No votes yet. Start battling!</li>';
+        return;
+      }
+      el.innerHTML = list.map((m, i) => `
+        <li>
+          <span class="rank">#${i + 1}</span>
+          <span>${m.title}</span>
+          <span style="margin-left:auto;color:var(--gold)">${m.wins} wins</span>
+        </li>`).join('');
+    }
+
+    loadPair();
+    loadLeaderboard();
+  </script>
+</body>
+</html>
